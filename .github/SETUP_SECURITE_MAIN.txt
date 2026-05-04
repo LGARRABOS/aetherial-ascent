@@ -1,0 +1,24 @@
+Sécurité branche main — Aether Ascent (addon)
+==============================================
+
+1) Poste / VM d'environnement de TEST
+   - Définir la variable d'environnement : AETHER_ENV=test
+   - Le hook pre-push refusera tout push qui met à jour refs/heads/main.
+   - Pour livrer du code mod sur main, utiliser une machine de dev sans cette variable,
+     ou pousser depuis une branche feature et ouvrir une PR (recommandé).
+
+2) Activer les hooks Git (une fois par clone)
+   - PowerShell : .\scripts\setup-git-hooks.ps1
+   - Bash     : sh scripts/setup-git-hooks.sh
+
+3) GitHub (obligatoire pour imposer la règle à tout le monde)
+   - Settings → Branches → Branch protection rules (ou Rulesets) pour "main" :
+     - Require a pull request before merging
+     - Désactiver ou restreindre "Allow direct pushes" (pas de push direct sur main)
+     - Exiger le statut du workflow "Build" (et éventuellement "Validate PR (main)")
+   - Ainsi, même sans hook local, personne ne peut contourner main sans PR.
+
+4) Contenu autorisé sur main
+   - Source du mod, ressources, Gradle wrapper, configs du dépôt.
+   - Les dossiers .vscode, .idea, run/, build/, .gradle/, etc. sont refusés par le hook
+     et par le workflow validate-pr-main.yml s'ils apparaissent dans la PR.

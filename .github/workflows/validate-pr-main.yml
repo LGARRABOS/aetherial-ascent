@@ -1,0 +1,32 @@
+# Refuse les PR vers main si des fichiers typiques dev/test/run sont inclus (ex. git add -f).
+name: Validate PR (main)
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  fichiers-hors-mod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Vérifier les chemins interdits
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          mapfile -t files < <(git diff --name-only "$BASE" "$HEAD")
+          bad=0
+          for f in "${files[@]}"; do
+            if echo "$f" | grep -qE '^(\.vscode/|\.idea/|\.run/|run/|build/|\.gradle/|bin/|out/)|\.iml$|^local\.properties$'; then
+              echo "::error file=$f::Chemin dev/test/build non autorisé sur main (code mod uniquement)."
+              bad=1
+            fi
+          done
+          exit "$bad"

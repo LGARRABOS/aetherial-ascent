@@ -1,0 +1,35 @@
+#!/bin/sh
+# Refuse les mises à jour de main depuis un environnement marqué "test".
+# Sur la machine / VM de test : définir AETHER_ENV=test (variable utilisateur ou système).
+# Activer les hooks : git config core.hooksPath .githooks
+# (ou lancer scripts/setup-git-hooks.ps1 / scripts/setup-git-hooks.sh)
+
+remote="$1"
+url="$2"
+env_lower=$(printf '%s' "${AETHER_ENV:-}" | tr '[:upper:]' '[:lower:]')
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+	case "$remote_ref" in
+	refs/heads/main)
+		if [ "$env_lower" = "test" ]; then
+			echo "Refus : push vers 'main' interdit quand AETHER_ENV=test (environnement de test)." >&2
+			echo "Travaillez sur une autre branche, ou retirez AETHER_ENV pour pousser le code mod sur main." >&2
+			exit 1
+		fi
+		if echo "$remote_sha" | grep -qE '^0{40}$'; then
+			range="$local_sha"
+		else
+			range="$remote_sha..$local_sha"
+		fi
+		bad=$(git diff --name-only $range 2>/dev/null | grep -E '^(\.vscode/|\.idea/|\.run/|run/|build/|\.gradle/|bin/|out/)|\.iml$|^local\.properties$' || true)
+		if [ -n "$bad" ]; then
+			echo "Refus : le push vers 'main' contient des chemins réservés au dev / run / build :" >&2
+			echo "$bad" >&2
+			echo "Retirez-les de l'index (ou annulez le commit) : seul le code source du mod doit aller sur main." >&2
+			exit 1
+		fi
+		;;
+	esac
+done
+
+exit 0
