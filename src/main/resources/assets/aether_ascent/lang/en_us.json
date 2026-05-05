@@ -1,0 +1,12 @@
+{
+  "aether_ascent.configuration.section.vertical": "Vertical gates (Overworld ↔ Aether)",
+  "aether_ascent.configuration.vertical.overworldGateMinY": "Overworld ascent threshold (Y >)",
+  "aether_ascent.configuration.vertical.aetherGateMaxY": "Aether descent threshold (Y <)",
+  "aether_ascent.configuration.vertical.overworldLandingY": "Overworld landing height",
+  "aether_ascent.configuration.vertical.transitionCooldownSeconds": "Cooldown between trips (seconds)",
+  "aether_ascent.configuration.vertical.transitionPresentationSeconds": "Transition effects duration (seconds)",
+  "aether_ascent.configuration.vertical.aetherGroundClearanceBlocks": "Blocks above terrain on Aether arrival",
+  "aether_ascent.configuration.vertical.minArrivalBottomY": "Minimum bottom Y for the convoy volume",
+  "aether_ascent.configuration.vertical.arrivalCollisionPadding": "Arrival collision test padding",
+  "aether_ascent.configuration.vertical.maxVerticalArrivalSearch": "Max upward search if blocked (blocks)"
+}

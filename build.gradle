@@ -27,7 +27,22 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Branche `dev` : dépôts JitPack / Modrinth / CurseMaven / flatDir(`libs`) pour les mods en localRuntime.
+    maven { url = 'https://jitpack.io' }
+
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+
+    // JAR place: drop optional mods here (e.g. si ResolutionStrategy échoue) — voir README ci-dessous
+    flatDir { dirs 'libs' }
 }
 
 base {
@@ -118,7 +133,25 @@ configurations {
 }
 
 dependencies {
-    // Sur `main` : pas de mods en localRuntime. Pour runClient avec Aether + Create + Aeronautics, utiliser la branche `dev`.
+    // Chaîne dev : localRuntime = présent pour runClient/runServer, non publié comme dépendance du jar du mod.
+    // Flywheel : Create 6.x l’incorpore (pas de mod séparé pour 1.21.1 sur Modrinth « Flywheel »).
+
+    localRuntime "maven.modrinth:create:${dependency_create_version}"
+    localRuntime "maven.modrinth:sable:${dependency_sable_version}"
+    localRuntime "maven.modrinth:create-aeronautics:${dependency_create_aeronautics_version}"
+
+    // The Aether : Modrinth (même 1.5.10) pour coller aux deps ; CurseForge seul peut tirer Accessories trop vieux (mixin NeoForge 21.1.228).
+    localRuntime "maven.modrinth:aether:${dependency_aether_version}"
+    // Alternative CurseMaven — remettre cette ligne et commenter Modrinth si besoin :
+    // localRuntime "curse.maven:aether-255308:${dependency_aether_curse_file_id}"
+
+    // Accessories explicite : beta.48 échoue sur EntityRenderers (WrapOperation lambda) ; utiliser ≥ beta.49 / beta.53.
+    localRuntime "maven.modrinth:accessories:${dependency_accessories_version}"
+    // oωo requis par Accessories
+    localRuntime "maven.modrinth:owo-lib:${dependency_owo_version}"
+
+    // Si Maven échoue : placer le JAR dans libs/ et décommenter (adapter le nom de fichier) :
+    // localRuntime name: 'create-aeronautics-bundled-1.21.1-1.2.1', ext: 'jar'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
