@@ -1,17 +1,17 @@
 # Aetherial Ascent
 
-NeoForge mod for **Minecraft 1.21.1** that adds **smooth vertical travel between the Overworld and The Aether** using altitude thresholds. It is aimed at players using **Create** and especially **Create Aeronautics** airships: the transition moves the **whole ride** (vehicle root plus passengers), preserves momentum, uses **vanilla-style dimension changes** (`DimensionTransition`), and checks arrival space against the **combined collision box** of the craft and riders.
+NeoForge mod for **Minecraft 1.21.1** that adds **smooth vertical travel between the Overworld and The Aether** using altitude thresholds. It moves the **whole convoy** (vehicle root plus passengers), preserves momentum, uses **vanilla-style dimension changes** (`DimensionTransition`), and checks arrival space against the **combined collision box** so large rides do not clip into terrain.
 
 ## Requirements
 
 | Dependency | Notes |
 |------------|--------|
 | **NeoForge** | `21.1.228` (see `gradle.properties`; use a compatible 1.21.1 build) |
-| **The Aether** | Required (`neoforge.mods.toml`) |
-| **Create** | Required (`neoforge.mods.toml`) |
-| **Sable** | Optional integration |
+| **The Aether** | Only **required** content mod (declared in `neoforge.mods.toml`) |
 
 Java **21** matches what Minecraft 1.21.1 ships with.
+
+The mod does **not** depend on **Create**, **Create Aeronautics**, or **Sable**; those are only used on the **`dev`** branch to author and test in a heavier mod pack.
 
 ## Features
 
@@ -25,7 +25,7 @@ Java **21** matches what Minecraft 1.21.1 ships with.
 ## Installation
 
 - Put **`aether_ascent-<version>.jar`** in the `mods` folder on the **server** (required for the logic to run).
-- **Dedicated multiplayer:** gameplay is **server-side** and this project does **not** register custom NeoForge network payloads. Players can **often omit the jar on the client** as long as they use the same NeoForge stack and the same required content mods (The Aether, Create, etc.) as the server. If your launcher enforces an identical mod list, include the jar on clients too.
+- **Dedicated multiplayer:** gameplay is **server-side** and this project does **not** register custom NeoForge network payloads. Players can **often omit the jar on the client** as long as they use the same NeoForge stack and **The Aether** as the server. If your launcher enforces an identical mod list, include the jar on clients too.
 - **Single-player / Open to LAN:** keep the jar on your game instance so the integrated server loads it and you still get the Mods config screen.
 
 ## Configuration
@@ -46,7 +46,7 @@ Changing values while the game is running may apply depending on NeoForge reload
 
 The output JAR is under `build/libs/`.
 
-Branch **`main`** keeps a **minimal Gradle layout**: no third-party mod repositories and no `localRuntime` lines so CI and publishing stay clean. **`dev`** adds Modrinth / CurseMaven / JitPack and `localRuntime` entries so `runClient` can load **The Aether**, **Create**, **Create Aeronautics**, **Accessories**, etc. Prefer **`dev`** for integrated playtesting; use branch protections on **`main`** if you want to block accidental commits of that environment.
+Branch **`main`** keeps a **minimal Gradle layout**: no third-party mod repositories and no `localRuntime` lines so CI and publishing stay clean. **`dev`** adds Modrinth / CurseMaven / JitPack and `localRuntime` entries (Aether plus optional stack such as Create / Create Aeronautics / Sable for **local testing only**). Prefer **`dev`** for that integrated playtest workflow; use branch protections on **`main`** if you want to block accidental commits of that environment.
 
 ## Repository
 

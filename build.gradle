@@ -96,7 +96,7 @@ configurations {
 }
 
 dependencies {
-    // No `localRuntime` entries on `main`. Use branch `dev` for Aether + Create + Create Aeronautics in the IDE.
+    // No `localRuntime` entries on `main`. Use branch `dev` for a full Aether (+ optional mods) IDE runtime.
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

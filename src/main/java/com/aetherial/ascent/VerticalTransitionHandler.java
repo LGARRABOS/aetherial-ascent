@@ -147,7 +147,7 @@ public final class VerticalTransitionHandler {
     }
 
     /**
-     * Enveloppe monde du convoi : racine + passagers récursifs (ballon Create + joueur, etc.).
+     * Enveloppe monde du convoi : racine + passagers récursifs (monture, ballon, etc.).
      */
     private static AABB unionMountedBounds(Entity entity) {
         AABB box = entity.getBoundingBox();

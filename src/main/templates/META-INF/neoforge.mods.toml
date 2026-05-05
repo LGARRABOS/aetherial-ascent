@@ -46,9 +46,9 @@ displayName="${mod_name}" #mandatory
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Pont vertical fluide entre l’Overworld et l’Aether (portail par altitude), pensé pour les vaisseaux Create Aeronautics.
+Pont vertical fluide entre l’Overworld et l’Aether (portail par altitude). Fonctionne avec le joueur seul ou tout véhicule / monture (racine + passagers).
 
-Multijoueur dédié : la logique est entièrement côté serveur et ce mod n’enregistre aucun canal réseau personnalisé ; les joueurs peuvent en général retirer ce fichier du dossier mods de leur client et se connecter avec le même NeoForge, Aether et Create que le serveur. En cas d’échec de connexion lié au pack, remettez le jar côté client. Solo / monde ouvert : gardez le jar dans mods (serveur intégré + option Config dans l’écran NeoForge).
+Multijoueur dédié : logique côté serveur, pas de canal réseau personnalisé ; les joueurs peuvent souvent omettre ce mod côté client s’ils ont le même NeoForge et le même Aether que le serveur. En cas d’échec de connexion lié au pack, remettez le jar côté client. Solo / monde ouvert : gardez le jar dans mods (serveur intégré + option Config dans l’écran NeoForge).
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
@@ -92,20 +92,6 @@ Multijoueur dédié : la logique est entièrement côté serveur et ce mod n’e
     modId="aether"
     type="required"
     versionRange="[1.5.1,)"
-    ordering="NONE"
-    side="BOTH"
-
-[[dependencies.${mod_id}]]
-    modId="create"
-    type="required"
-    versionRange="[6.0.10,)"
-    ordering="NONE"
-    side="BOTH"
-
-[[dependencies.${mod_id}]]
-    modId="sable"
-    type="optional"
-    versionRange="[1.0,)"
     ordering="NONE"
     side="BOTH"
 
