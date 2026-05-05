@@ -1,0 +1,12 @@
+{
+  "aether_ascent.configuration.section.vertical": "Portails verticaux (Overworld ↔ Éther)",
+  "aether_ascent.configuration.vertical.overworldGateMinY": "Seuil de montée Overworld (Y >)",
+  "aether_ascent.configuration.vertical.aetherGateMaxY": "Seuil de descente dans l'Éther (Y <)",
+  "aether_ascent.configuration.vertical.overworldLandingY": "Hauteur d'arrivée en Overworld",
+  "aether_ascent.configuration.vertical.transitionCooldownSeconds": "Temps d'attente entre voyages (secondes)",
+  "aether_ascent.configuration.vertical.transitionPresentationSeconds": "Durée des effets de voyage (secondes)",
+  "aether_ascent.configuration.vertical.aetherGroundClearanceBlocks": "Blocs au-dessus du sol à l'arrivée Éther",
+  "aether_ascent.configuration.vertical.minArrivalBottomY": "Y minimum du bas du volume (convoi)",
+  "aether_ascent.configuration.vertical.arrivalCollisionPadding": "Marge du test de collision à l'arrivée",
+  "aether_ascent.configuration.vertical.maxVerticalArrivalSearch": "Recherche verticale max si bloqué (blocs)"
+}

@@ -1,21 +1,25 @@
 package com.aetherial.ascent;
 
-import java.util.Collections;
+import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.RelativeMovement;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.portal.DimensionTransition;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 public final class VerticalTransitionHandler {
@@ -24,12 +28,6 @@ public final class VerticalTransitionHandler {
             ResourceLocation.fromNamespaceAndPath("aether", "the_aether"));
 
     private static final String COOLDOWN_TAG = "aether_ascent:cooldown";
-    private static final int COOLDOWN_TICKS = 5 * 20;
-    private static final int TRANSITION_EFFECT_TICKS = 2 * 20;
-    /** Blocs au-dessus de la heightmap (pas de plancher artificiel : suit le terrain / le vide local). */
-    private static final int AETHER_ARRIVAL_CLEARANCE = 4;
-    /** Seuil minimal uniquement pour éviter y≤1 (comportement natif autour de la couche 0), pas un « plancher » de jeu. */
-    private static final double AETHER_ARRIVAL_EPSILON_MIN_Y = 2.0;
 
     private VerticalTransitionHandler() {
     }
@@ -45,10 +43,13 @@ public final class VerticalTransitionHandler {
         final Level level = player.level();
         final double y = player.getY();
 
+        final int overworldGate = AscentConfig.SERVER.overworldGateMinY.get();
+        final int aetherGate = AscentConfig.SERVER.aetherGateMaxY.get();
+
         final TransitionKind kind;
-        if (level.dimension() == Level.OVERWORLD && y > 500.0) {
+        if (level.dimension() == Level.OVERWORLD && y > overworldGate) {
             kind = TransitionKind.TO_AETHER;
-        } else if (level.dimension().equals(AETHER) && y < -2.0) {
+        } else if (level.dimension().equals(AETHER) && y < aetherGate) {
             kind = TransitionKind.TO_OVERWORLD;
         } else {
             return;
@@ -71,32 +72,121 @@ public final class VerticalTransitionHandler {
 
         final double tx = root.getX();
         final double tz = root.getZ();
-        final double ty = switch (kind) {
-            case TO_AETHER -> resolveAetherArrivalY(destination, tx, tz);
-            case TO_OVERWORLD -> 450.0;
-        };
+        final Optional<Double> tyOpt = resolveArrivalY(destination, tx, tz, root, kind);
+        if (tyOpt.isEmpty()) {
+            AetherAscent.LOGGER.warn(
+                    "Aucun emplacement libre pour l’engin (union hitboxes) à ({}, ?, {}) en {} — passage annulé.",
+                    tx,
+                    tz,
+                    destination.dimension().location());
+            player.sendSystemMessage(
+                    Component.literal(
+                            "Pas assez de place pour faire apparaître l’engin à l’arrivée. Dégagez le sol ou le ciel sous (x,z) miroir."));
+            return;
+        }
+        final double ty = tyOpt.get();
         final float yRot = root.getYRot();
         final float xRot = root.getXRot();
 
         setCooldown(root);
-        final var motion = root.getDeltaMovement();
+        final Vec3 motion = root.getDeltaMovement();
+        final Vec3 destPos = new Vec3(tx, ty, tz);
 
-        teleportRoot(root, destination, tx, ty, tz, yRot, xRot);
-        root.setDeltaMovement(motion);
+        // Flux vanilla (respawn + chargement) : ServerPlayer et passagers via Entity#changeDimension.
+        final DimensionTransition.PostDimensionTransition after = buildPostTransition(motion, destination);
+        final DimensionTransition transition = new DimensionTransition(
+                destination,
+                destPos,
+                motion,
+                yRot,
+                xRot,
+                false,
+                DimensionTransition.PLAY_PORTAL_SOUND
+                        .then(DimensionTransition.PLACE_PORTAL_TICKET)
+                        .then(after));
 
-        applyTransitionPresentation(player, destination);
+        if (root.changeDimension(transition) == null) {
+            root.getPersistentData().remove(COOLDOWN_TAG);
+            AetherAscent.LOGGER.warn("Changement de dimension refusé pour {} ({})", root, kind);
+        }
     }
 
     /**
-     * Hauteur d’arrivée : sol local (heightmap) + léger dégagement. Pas de plancher type y=72 : un engin Create
-     * Aeronautics reste cohérent avec le relief réel sous (x,z). On ne force qu’un minimum très bas pour ne pas
-     * retomber exactement sur la zone y≈0 déclenchant le renvoi Overworld natif.
+     * Calcule une hauteur d’arrivée en tenant compte de la taille réelle de l’ensemble (véhicule + passagers
+     * embarqués) : union des hitboxes, puis position minimale pour que le bas du volume reste au‑dessus du sol
+     * (heightmap), enfin vérification {@link Level#noCollision(Entity, AABB)} dans le monde cible avec
+     * {@code entity = null} pour ne pas dépendre du dimension actuel du root.
      */
-    private static double resolveAetherArrivalY(ServerLevel aether, double x, double z) {
-        final int ix = BlockPos.containing(x, 0, z).getX();
-        final int iz = BlockPos.containing(x, 0, z).getZ();
-        final int surface = aether.getHeight(Heightmap.Types.MOTION_BLOCKING, ix, iz);
-        return Math.max(surface + AETHER_ARRIVAL_CLEARANCE, AETHER_ARRIVAL_EPSILON_MIN_Y);
+    private static Optional<Double> resolveArrivalY(
+            ServerLevel dest,
+            double tx,
+            double tz,
+            Entity root,
+            TransitionKind kind) {
+        final AABB union = unionMountedBounds(root);
+        final double bottomOffset = root.getY() - union.minY;
+
+        final double baseTy = switch (kind) {
+            case TO_AETHER -> {
+                final int ix = BlockPos.containing(tx, 0, tz).getX();
+                final int iz = BlockPos.containing(tx, 0, tz).getZ();
+                final int clearance = AscentConfig.SERVER.aetherGroundClearanceBlocks.get();
+                final double minBottom = AscentConfig.SERVER.minArrivalBottomY.get();
+                final int surface = dest.getHeight(Heightmap.Types.MOTION_BLOCKING, ix, iz);
+                final double tyTerrain = surface + clearance + bottomOffset;
+                yield Math.max(tyTerrain, bottomOffset + minBottom);
+            }
+            case TO_OVERWORLD -> {
+                final int landing = AscentConfig.SERVER.overworldLandingY.get();
+                final double minBottom = AscentConfig.SERVER.minArrivalBottomY.get();
+                yield Math.max(landing, bottomOffset + minBottom);
+            }
+        };
+
+        return findClearArrivalY(dest, root, union, tx, tz, baseTy);
+    }
+
+    /**
+     * Enveloppe monde du convoi : racine + passagers récursifs (ballon Create + joueur, etc.).
+     */
+    private static AABB unionMountedBounds(Entity entity) {
+        AABB box = entity.getBoundingBox();
+        for (Entity passenger : entity.getPassengers()) {
+            box = box.minmax(unionMountedBounds(passenger));
+        }
+        return box;
+    }
+
+    /**
+     * Cherche une hauteur où {@code union} translate au‑dessus de (tx, tz) ne chevauche ni blocs solides ni autres
+     * entités dans le monde cible.
+     */
+    private static Optional<Double> findClearArrivalY(
+            ServerLevel dest,
+            Entity root,
+            AABB union,
+            double tx,
+            double tz,
+            double startTy) {
+        final double dx = tx - root.getX();
+        final double dz = tz - root.getZ();
+        final double pad = AscentConfig.SERVER.arrivalCollisionPadding.get();
+        final AABB unionPadded = union.inflate(pad);
+        final int minY = dest.getMinBuildHeight();
+        final int maxY = dest.getMaxBuildHeight();
+        final int maxSearch = AscentConfig.SERVER.maxVerticalArrivalSearch.get();
+
+        for (int step = 0; step < maxSearch; step++) {
+            final double ty = startTy + step;
+            final AABB atDest = unionPadded.move(dx, ty - root.getY(), dz);
+            if (atDest.minY < minY || atDest.maxY > maxY) {
+                continue;
+            }
+            if (dest.noCollision(null, atDest)) {
+                return Optional.of(ty);
+            }
+        }
+        return Optional.empty();
     }
 
     private static Entity resolveTransportRoot(ServerPlayer player) {
@@ -109,42 +199,58 @@ public final class VerticalTransitionHandler {
     }
 
     private static boolean isOnCooldown(Entity root) {
+        final int cooldownTicks = cooldownTicks();
+        if (cooldownTicks <= 0) {
+            return false;
+        }
         final long now = root.level().getGameTime();
         return root.getPersistentData().contains(COOLDOWN_TAG)
                 && now < root.getPersistentData().getLong(COOLDOWN_TAG);
     }
 
     private static void setCooldown(Entity root) {
-        final long deadline = root.level().getGameTime() + COOLDOWN_TICKS;
+        final int cooldownTicks = cooldownTicks();
+        if (cooldownTicks <= 0) {
+            return;
+        }
+        final long deadline = root.level().getGameTime() + cooldownTicks;
         root.getPersistentData().putLong(COOLDOWN_TAG, deadline);
     }
 
-    private static void teleportRoot(
-            Entity root,
-            ServerLevel dest,
-            double x,
-            double y,
-            double z,
-            float yRot,
-            float xRot) {
-        if (root instanceof ServerPlayer sp) {
-            sp.teleportTo(dest, x, y, z, yRot, xRot);
-        } else {
-            root.teleportTo(dest, x, y, z, Collections.<RelativeMovement>emptySet(), yRot, xRot);
-        }
+    private static int cooldownTicks() {
+        return Math.max(0, AscentConfig.SERVER.transitionCooldownSeconds.get()) * 20;
+    }
+
+    /**
+     * {@link ServerPlayer#changeDimension} n’applique pas {@link DimensionTransition#speed()} — on réinjecte la
+     * vélocité ici. Les effets ne s’appliquent qu’une fois (uniquement pour l’entité joueur : le callback véhicule est
+     * ignoré).
+     */
+    private static DimensionTransition.PostDimensionTransition buildPostTransition(Vec3 motion, ServerLevel afterLevel) {
+        return entity -> {
+            entity.setDeltaMovement(motion);
+            if (entity instanceof ServerPlayer sp) {
+                applyTransitionPresentation(sp, afterLevel);
+            }
+        };
     }
 
     private static void applyTransitionPresentation(ServerPlayer player, ServerLevel afterLevel) {
+        final double sec = AscentConfig.SERVER.transitionPresentationSeconds.get();
+        final int ticks = Mth.floor(sec * 20.0);
+        if (ticks <= 0) {
+            return;
+        }
         player.addEffect(new MobEffectInstance(
                 MobEffects.BLINDNESS,
-                TRANSITION_EFFECT_TICKS,
+                ticks,
                 0,
                 false,
                 false,
                 true));
         player.addEffect(new MobEffectInstance(
                 MobEffects.SLOW_FALLING,
-                TRANSITION_EFFECT_TICKS,
+                ticks,
                 0,
                 false,
                 false,
