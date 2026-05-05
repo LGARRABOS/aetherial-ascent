@@ -1,25 +1,57 @@
+# Aetherial Ascent
 
-Installation information
-=======
+NeoForge mod for **Minecraft 1.21.1** that adds **smooth vertical travel between the Overworld and The Aether** using altitude thresholds. It is aimed at players using **Create** and especially **Create Aeronautics** airships: the transition moves the **whole ride** (vehicle root plus passengers), preserves momentum, uses **vanilla-style dimension changes** (`DimensionTransition`), and checks arrival space against the **combined collision box** of the craft and riders.
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## Requirements
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+| Dependency | Notes |
+|------------|--------|
+| **NeoForge** | `21.1.228` (see `gradle.properties`; use a compatible 1.21.1 build) |
+| **The Aether** | Required (`neoforge.mods.toml`) |
+| **Create** | Required (`neoforge.mods.toml`) |
+| **Sable** | Optional integration |
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+Java **21** matches what Minecraft 1.21.1 ships with.
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+## Features
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+- **Overworld → Aether** when the transport root is above a configurable Y threshold (default on vanilla-like presets: high altitude).
+- **Aether → Overworld** when below a configurable Y threshold (underworld side).
+- **Cooldown**, short **blindness / slow falling** presentation (duration configurable on `dev` / current sources).
+- **Arrival placement** uses the destination heightmap plus clearance and scans upward if the volume is blocked; transition is **cancelled** with feedback if no free space is found.
+- **Server configuration** (`serverconfig/aether-ascent-server.toml`): thresholds, landing height, cooldown, effect duration, clearance, collision padding, vertical search limit.
+- **In-game config UI** (NeoForge **Mods → Aetherial Ascent → Config**) when the mod is installed on the **client** (optional on dedicated servers; see below).
+
+## Installation
+
+- Put **`aether_ascent-<version>.jar`** in the `mods` folder on the **server** (required for the logic to run).
+- **Dedicated multiplayer:** gameplay is **server-side** and this project does **not** register custom NeoForge network payloads. Players can **often omit the jar on the client** as long as they use the same NeoForge stack and the same required content mods (The Aether, Create, etc.) as the server. If your launcher enforces an identical mod list, include the jar on clients too.
+- **Single-player / Open to LAN:** keep the jar on your game instance so the integrated server loads it and you still get the Mods config screen.
+
+## Configuration
+
+After a world has loaded once, edit:
+
+`config` folder is per instance; server worlds store it under:
+
+`saves/<world>/serverconfig/aether-ascent-server.toml`
+
+Changing values while the game is running may apply depending on NeoForge reload behaviour; a restart is always safe.
+
+## Building from source
+
+```bash
+./gradlew build
+```
+
+The output JAR is under `build/libs/`.
+
+The repository **`dev`** branch includes **Gradle `localRuntime`** coordinates (Modrinth / CurseMaven / etc.) so `runClient` can pull **The Aether**, **Create**, **Create Aeronautics**, **Accessories**, and friends for local testing. The **`main`** branch is set up for a slimmer Gradle file while still compiling the mod; use **`dev`** if you want one-click dev runs with those mods.
+
+## Repository
+
+- **GitHub:** [LGARRABOS/aetherial-ascent](https://github.com/LGARRABOS/aetherial-ascent)
+
+## License
+
+See `gradle.properties` / mod metadata (`mod_license`). All Rights Reserved unless you change it in your fork.
