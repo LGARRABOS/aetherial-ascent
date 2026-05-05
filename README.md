@@ -17,7 +17,7 @@ Java **21** matches what Minecraft 1.21.1 ships with.
 
 - **Overworld → Aether** when the transport root is above a configurable Y threshold (default on vanilla-like presets: high altitude).
 - **Aether → Overworld** when below a configurable Y threshold (underworld side).
-- **Cooldown**, short **blindness / slow falling** presentation (duration configurable on `dev` / current sources).
+- **Cooldown**, short **blindness / slow falling** presentation (duration configurable in `serverconfig`).
 - **Arrival placement** uses the destination heightmap plus clearance and scans upward if the volume is blocked; transition is **cancelled** with feedback if no free space is found.
 - **Server configuration** (`serverconfig/aether-ascent-server.toml`): thresholds, landing height, cooldown, effect duration, clearance, collision padding, vertical search limit.
 - **In-game config UI** (NeoForge **Mods → Aetherial Ascent → Config**) when the mod is installed on the **client** (optional on dedicated servers; see below).
@@ -46,7 +46,7 @@ Changing values while the game is running may apply depending on NeoForge reload
 
 The output JAR is under `build/libs/`.
 
-The repository **`dev`** branch includes **Gradle `localRuntime`** coordinates (Modrinth / CurseMaven / etc.) so `runClient` can pull **The Aether**, **Create**, **Create Aeronautics**, **Accessories**, and friends for local testing. The **`main`** branch is set up for a slimmer Gradle file while still compiling the mod; use **`dev`** if you want one-click dev runs with those mods.
+Branch **`main`** keeps a **minimal Gradle layout**: no third-party mod repositories and no `localRuntime` lines so CI and publishing stay clean. **`dev`** adds Modrinth / CurseMaven / JitPack and `localRuntime` entries so `runClient` can load **The Aether**, **Create**, **Create Aeronautics**, **Accessories**, etc. Prefer **`dev`** for integrated playtesting; use branch protections on **`main`** if you want to block accidental commits of that environment.
 
 ## Repository
 
